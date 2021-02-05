@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<uidefinition xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://prd-use-rad-assets.azurewebsites.net/ExtensionsSchemaDefinition_v1_0.xsd">
+  <version ver="1.0" />
+  <tile status="{TileStatus}" icon="{TileIcon}" secondaryicon="{TileSecondaryIcon}" action="command:TileActionRoom" navigation="show:LayoutSetup" showinhomepage="#true" showinroompage="#true"/>
+  <layouts>
+    <layout id="LayoutDefault" title="LayoutDefaultTitle" subtitle="LayoutDefaultSubTitle" isdefaultlayout="#true"></layout>
+    <layout id="LayoutSetup" title="^MainPageTitle" subtitle="^MainPageSubTitle">
+      <controls>
+        <subheader id="SubheaderIdTeamSelector" label="^SubheaderLabelTeamSelector" />
+        <selectorbutton id="SelectorButtonIdTeam" label="^SelectorButtonLabelTeam" value="{SelectorButtonValueTeam}" />
+        <subheader id="SubheaderGoalActionSelectorId" label="^SubheaderGoalActionSelectorLabel" />
+        <selectorbutton id="SelectorButtonIdAction" label="^SelectorButtonLabelAction" value="{SelectorButtonValueAction}" />
+      </controls>
+    </layout>
+  </layouts>
+</uidefinition>
