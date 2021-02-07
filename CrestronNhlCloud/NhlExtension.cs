@@ -275,8 +275,10 @@ namespace CrestronNhlCloud
 								var game = schedule.Dates.First().Games.First();
 								var team = game.Teams.Away.Team.Id == teamId ? game.Teams.Away : game.Teams.Home;
 
-								((PropertyValue<string>)_properties[TileStatus]).Value = $"Game Time:{Environment.NewLine}{game.GameDate:hh:mm t}";
+								((PropertyValue<string>)_properties[TileStatus]).Value = $"Game Time:{System.Environment.NewLine}{game.GameDate:hh:mm t}";
 								Commit();
+
+								// BUG changing teams in same game causes false goal. + others
 
 								// first make sure in sync, system may have just booted or api offline
 								if (_currentGame != game.GamePk)
@@ -288,8 +290,8 @@ namespace CrestronNhlCloud
 
 								if (_score != team.Score)
 								{
-									CrestronConsole.PrintLine("GOAL");
-									((PropertyValue<string>)_properties[TileStatus]).Value = "GOAL";
+									CrestronConsole.PrintLine(">>>>>>>>>>>>>> GOAL !!!!!!!!!!!!!!!");
+									((PropertyValue<string>)_properties[TileStatus]).Value = $"GOAL!{Environment.NewLine}{game.Teams.Away.Score}-{game.Teams.Home.Score}";
 									GoalScored?.Invoke();
 								}
 
