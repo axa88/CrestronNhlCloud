@@ -1,10 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Threading;
 
+using Crestron.RAD.Common;
 using Crestron.RAD.Common.Attributes.Programming;
 using Crestron.RAD.Common.Enums;
+using Crestron.RAD.Common.ExtensionMethods;
 using Crestron.RAD.Common.Interfaces;
 using Crestron.RAD.Common.Interfaces.ExtensionDevice;
 using Crestron.RAD.DeviceTypes.ExtensionDevice;
@@ -12,6 +15,8 @@ using Crestron.SimplSharp;
 
 using CrestronNhlCloud.PyngApi.Models.Credentials;
 using CrestronNhlCloud.Transport;
+
+using NhlApi.Models.Teams;
 
 using static CrestronNhlCloud.NhlExtension.UiObjects;
 
@@ -23,21 +28,10 @@ namespace CrestronNhlCloud
 {
 	public class NhlExtension : AExtensionDevice, ICloudConnected
 	{
-		private readonly Dictionary<string, IPropertyValue> _properties = new Dictionary<string, IPropertyValue>();
-		private HttpApiTransport _httpApiTransport;
-		private IPropertyAvailableValue _currentTeam;
-		private ushort _currentTeamId;
-		private readonly List<IPropertyAvailableValue> _teamList;
-
-		private Timer _pollTimer;
-		private int _currentGame;
-		private int _score;
-
-		CancellationTokenSource	_cancellationTokenSource = new CancellationTokenSource();
-
-
 		public static class UiObjects
 		{
+			public const string DefaultTeamKey = nameof(DefaultTeamKey);
+
 			public const string TileStatus = nameof(TileStatus);
 			public const string TileIcon = nameof(TileIcon);
 			public const string TileSecondaryIcon = nameof(TileSecondaryIcon);
@@ -47,11 +41,21 @@ namespace CrestronNhlCloud
 			public const string SelectorButtonLabelAction = nameof(SelectorButtonLabelAction);
 		}
 
+		private readonly Dictionary<string, IPropertyValue> _properties = new Dictionary<string, IPropertyValue>();
+		private HttpApiTransport _httpApiTransport;
+		private ushort _currentTeamId;
+		private readonly List<IPropertyAvailableValue> _teamList;
+		private List<Team> _teams = new List<Team>();
+		private Team _currentTeam;
+		private Timer _pollTimer;
+		private int _currentGame;
+		private int _score;
+		CancellationTokenSource	_cancellationTokenSource = new CancellationTokenSource();
 
 		public NhlExtension()
 		{
 			// Tile
-			_properties[TileStatus] = CreateProperty<string>(new PropertyDefinition(UiObjects.TileStatus, UiObjects.TileStatus, DevicePropertyType.String));
+			_properties[TileStatus] = CreateProperty<string>(new PropertyDefinition(TileStatus, TileStatus, DevicePropertyType.String));
 			_properties[TileIcon] = CreateProperty<string>(new PropertyDefinition(TileIcon, TileIcon, DevicePropertyType.String));
 			_properties[TileSecondaryIcon] = CreateProperty<string>(new PropertyDefinition(TileSecondaryIcon, TileSecondaryIcon, DevicePropertyType.String));
 
@@ -65,6 +69,9 @@ namespace CrestronNhlCloud
 			CrestronConsole.PrintLine("RAD EX: cstr");
 		}
 
+		[ProgrammableEvent ("^GoalScored")]
+		public event Action GoalScored;
+
 		public void Initialize()
 		{
 			_httpApiTransport = new HttpApiTransport();
@@ -72,111 +79,31 @@ namespace CrestronNhlCloud
 
 			Commit();
 			CrestronConsole.PrintLine("RAD EX: inid");
-		}
-
-		private void PollTimerCallback(object state)
-		{
-			// uninitialized
-			if (!_teamList.Any())
-			{
-				var teams = _httpApiTransport.GetTeams();
-				if (teams != null)
-				{
-					foreach (var team in teams)
-						_teamList.Add(new PropertyAvailableValue<ushort>(team.Id, DevicePropertyType.UInt16, $"{team.Abbreviation}", null));
-
-					if (_teamList.Any())
-						Connected = true;
-				}
-			}
-
-			var teamId = ((PropertyValue<ushort>)_properties[SelectorButtonValueTeam]).Value;
-			if (teamId != default)
-			{
-				var schedule = _httpApiTransport.GetTeamSchedule(teamId);
-				if (schedule != null && schedule.TotalGames > 0)
-				{
-					// todo account for more than one gate in a day.
-					/*"status" : {
-						"abstractGameState" : "Preview",
-						"codedGameState" : "1",
-						"detailedState" : "Scheduled",
-						"statusCode" : "1",
-						"startTimeTBD" : false
-					}*/
-
-					/*"status": {
-						"abstractGameState": "Final",
-						"codedGameState": "7",
-						"detailedState": "Final",
-						"statusCode": "7",
-						"startTimeTBD": true
-					}*/
-					/*"status" : {
-						"abstractGameState" : "Preview",
-						"codedGameState" : "9",
-						"detailedState" : "Postponed",
-						"statusCode" : "9",
-						"startTimeTBD" : false
-					}*/
-
-					var game = schedule.Dates.First().Games.First();
-
-					var team = game.Teams.Away.Team.Id == teamId ? game.Teams.Away : game.Teams.Home;
-
-					// first make sure in sync, system may have just booted or api offline
-					if (_currentGame != game.GamePk)
-						_score = team.Score;
-
-					if (_score != team.Score)
-					{
-						// do Goal Action
-					}
-
-					// adjust poll timing
-					if (game.GameDate - DateTime.Now > TimeSpan.FromMinutes(10))
-						_pollTimer.Change(TimeSpan.FromMinutes(10), Timeout.InfiniteTimeSpan);
-					else
-					{
-						if (game.Teams.Away.Team.Id == teamId)
-						{
-
-						}
-						else
-						{
-
-						}
-
-						_pollTimer.Change(TimeSpan.FromMinutes(1), Timeout.InfiniteTimeSpan);
-					}
-
-					var gameTime = DateTime.Parse("2010-08-20T15:00:00Z", null, System.Globalization.DateTimeStyles.RoundtripKind);
-				}
-				else
-					((PropertyValue<string>)_properties[TileStatus]).Value = "No Game Today";
-			}
 
 		}
 
 		protected override IOperationResult DoCommand(string command, string[] parameters)
 		{
+			CrestronConsole.PrintLine(nameof(DoCommand));
+			CrestronConsole.PrintLine($"command: {command}");
+			foreach (var parameter in parameters)
+				CrestronConsole.PrintLine($"parameters: {parameter}");
+
 			switch (command)
 			{
 				case TileActionRoom:
-					CrestronConsole.PrintLine(TileActionRoom);
-
 					try
 					{
-						CrestronConsole.PrintLine("trying");
-
+						CrestronConsole.PrintLine("try");
+						var gameTime = DateTime.Parse("2010-08-20T15:00:00Z", null, System.Globalization.DateTimeStyles.RoundtripKind);
+						CrestronConsole.PrintLine($"gametime: {gameTime}");
 						//TestMeth();
 					}
 					catch (Exception exception)
 					{
-						((PropertyValue<string>)_properties[TileStatus]).Value = "catch";
+						CrestronConsole.PrintLine("catch");
 						CrestronConsole.PrintLine(exception.Message);
 						CrestronConsole.PrintLine(exception.StackTrace);
-
 					}
 
 					break;
@@ -186,33 +113,41 @@ namespace CrestronNhlCloud
 					break;
 			}
 
-			Commit();
-			CrestronConsole.PrintLine("committed");
 			return new OperationResult(OperationResultCode.Success);
 		}
 
 		protected override IOperationResult SetDriverPropertyValue<T>(string propertyKey, T value)
 		{
-			CrestronConsole.PrintLine($"propertyKey {propertyKey}");
-			CrestronConsole.PrintLine($"value {value}");
+			CrestronConsole.PrintLine(nameof(SetDriverPropertyValue));
+			CrestronConsole.PrintLine($"propertyKey: {propertyKey}");
+			CrestronConsole.PrintLine($"value: {value}");
 
 			try
 			{
-
 				switch (propertyKey)
 				{
-						case SelectorButtonValueTeam:
-						/*var v = ((PropertyValue<T>)_properties[propertyKey]).Value;
-						uint.TryParse(v, out var teamId);
-						_currentTeamId = teamId;*/
+					case SelectorButtonValueTeam:
+						// if team changes
+						var old = ((PropertyValue<ushort>)_properties[SelectorButtonValueTeam]).Value;
 
+						// set button value to selected value
 						((PropertyValue<T>)_properties[SelectorButtonValueTeam]).Value = value;
+						Commit();
+
+						// store current team
+						SaveSetting(nameof(DefaultTeamKey), ((PropertyValue<ushort>)_properties[SelectorButtonValueTeam]).Value);
+
+						// if team changed update
+						if (Convert.ToUInt16(value) != old)
+						{
+							CrestronConsole.PrintLine("team changed");
+							PollTimerCallback(null);
+						}
 
 						break;
 					default: break;
 				}
 
-				Commit();
 				return new OperationResult(OperationResultCode.Success);
 			}
 			catch (Exception exception)
@@ -229,15 +164,168 @@ namespace CrestronNhlCloud
 			return new OperationResult(OperationResultCode.Success);
 		}
 
-		//private void SetTeamList()
-		//{
-		//	var teams = _httpApiTransport.GetTeams();
+		private void PollTimerCallback(object state)
+		{
+			try
+			{
+				{ // uninitialized
+					if (!_teamList.Any())
+					{
+						CrestronConsole.PrintLine("initialize");
+						_teams = _httpApiTransport.GetTeams();
+						if (_teams == null)
+						{
+							CrestronConsole.PrintLine("cant connect to nhl");
+							_pollTimer.Change(TimeSpan.FromSeconds(10), Timeout.InfiniteTimeSpan);
+						}
+						else
+						{
+							CrestronConsole.PrintLine("initialize");
+							foreach (var team in _teams)
+								_teamList.Add(new PropertyAvailableValue<ushort>(team.Id, DevicePropertyType.UInt16, $"{team.Abbreviation}", null));
 
-		//	foreach (var team in teams)
-		//		_teamList.Add(new PropertyAvailableValue<ushort>(team.Id, DevicePropertyType.String, $"{team.Abbreviation}", null));
+							if (_teamList.Any())
+							{
+								Commit();
+								Connected = true;
+								CrestronConsole.PrintLine("connected");
+							}
+						}
+					}
+				}
 
-		//	((PropertyValue<ushort>)_properties[SelectorButtonValueTeam]).Value = 3;
-		//}
+				{ // restore default
+					if (((PropertyValue<ushort>)_properties[SelectorButtonValueTeam]).Value == default && _teamList.Any())
+					{
+						CrestronConsole.PrintLine("restore");
+						var defaultTeamId = GetSetting(nameof(DefaultTeamKey));
+						CrestronConsole.PrintLine($"defaultTeamId: {defaultTeamId}");
+
+						var teamId = Convert.ToUInt16(defaultTeamId);
+						if (defaultTeamId != null && teamId != default)
+						{
+							CrestronConsole.PrintLine("check");
+							((PropertyValue<ushort>)_properties[SelectorButtonValueTeam]).Value = teamId;
+							Commit();
+							CrestronConsole.PrintLine("committed");
+						}
+						else
+						{
+							CrestronConsole.PrintLine("no def");
+						}
+
+						CrestronConsole.PrintLine("done");
+					}
+				}
+
+				#region function
+
+				{ // poll
+					var teamId = ((PropertyValue<ushort>)_properties[SelectorButtonValueTeam]).Value;
+					if (teamId != default)
+					{
+						CrestronConsole.PrintLine("Poll");
+
+						var schedule = _httpApiTransport.GetTeamSchedule(teamId);
+						if (schedule == null)
+						{
+							CrestronConsole.PrintLine("no sched");
+							Connected = false;
+							_pollTimer.Change(TimeSpan.FromSeconds(10), Timeout.InfiniteTimeSpan);
+						}
+						else
+						{
+							if (schedule.TotalGames < 1)
+							{
+								CrestronConsole.PrintLine("no game");
+								((PropertyValue<string>)_properties[TileStatus]).Value = "No Game Today";
+								Commit();
+								// schedule next check at midnite
+							}
+							else
+							{
+								CrestronConsole.PrintLine("game on");
+
+								#region statuses
+								// todo account for more than one gate in a day.
+								/*"status" : {
+								"abstractGameState" : "Preview",
+								"codedGameState" : "1",
+								"detailedState" : "Scheduled",
+								"statusCode" : "1",
+								"startTimeTBD" : false
+							}*/
+
+								/*"status": {
+								"abstractGameState": "Final",
+								"codedGameState": "7",
+								"detailedState": "Final",
+								"statusCode": "7",
+								"startTimeTBD": true
+							}*/
+								/*"status" : {
+								"abstractGameState" : "Preview",
+								"codedGameState" : "9",
+								"detailedState" : "Postponed",
+								"statusCode" : "9",
+								"startTimeTBD" : false
+							}*/
+								#endregion
+
+								var game = schedule.Dates.First().Games.First();
+								var team = game.Teams.Away.Team.Id == teamId ? game.Teams.Away : game.Teams.Home;
+
+								((PropertyValue<string>)_properties[TileStatus]).Value = $"Game Time:{Environment.NewLine}{game.GameDate:hh:mm t}";
+								Commit();
+
+								// first make sure in sync, system may have just booted or api offline
+								if (_currentGame != game.GamePk)
+								{
+									CrestronConsole.PrintLine("trackers reset");
+									_currentGame = game.GamePk;
+									_score = team.Score;
+								}
+
+								if (_score != team.Score)
+								{
+									CrestronConsole.PrintLine("GOAL");
+									((PropertyValue<string>)_properties[TileStatus]).Value = "GOAL";
+									GoalScored?.Invoke();
+								}
+
+								// adjust poll timing
+								if (ushort.TryParse(game.Status.StatusCode, out var statusCode) && statusCode > 6) // game over
+								{
+									// schedule next check at midnite
+								}
+								else if (game.GameDate - DateTime.Now > TimeSpan.FromMinutes(10))
+								{
+									CrestronConsole.PrintLine("time > 10");
+									_pollTimer.Change(TimeSpan.FromMinutes(10), Timeout.InfiniteTimeSpan);
+								}
+								else if (game.GameDate - DateTime.Now > TimeSpan.FromMinutes(1))
+								{
+									CrestronConsole.PrintLine("time > 1");
+									_pollTimer.Change(TimeSpan.FromMinutes(1), Timeout.InfiniteTimeSpan);
+								}
+								else
+								{
+									CrestronConsole.PrintLine("else poll");
+									_pollTimer.Change(TimeSpan.FromSeconds(3), Timeout.InfiniteTimeSpan);
+								}
+							}
+						}
+					}
+				}
+
+				#endregion function
+			}
+			catch (Exception exception)
+			{
+				CrestronConsole.PrintLine(nameof(PollTimerCallback));
+				CrestronConsole.PrintLine(exception.Message);
+			}
+		}
 
 		private void Refresh()
 		{
@@ -276,5 +364,6 @@ namespace CrestronNhlCloud
 			}
 
 		}
+
 	}
 }
