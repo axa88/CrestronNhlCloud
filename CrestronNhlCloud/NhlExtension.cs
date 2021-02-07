@@ -13,7 +13,6 @@ using Crestron.RAD.Common.Interfaces.ExtensionDevice;
 using Crestron.RAD.DeviceTypes.ExtensionDevice;
 using Crestron.SimplSharp;
 
-using CrestronNhlCloud.PyngApi.Models.Credentials;
 using CrestronNhlCloud.Transport;
 
 using NhlApi.Models.Teams;
@@ -22,7 +21,6 @@ using static CrestronNhlCloud.NhlExtension.UiObjects;
 
 using Timeout = System.Threading.Timeout;
 
-using static CrestronNhlCloud.PyngApi.ApiClients.RestClient;
 
 namespace CrestronNhlCloud
 {
@@ -42,7 +40,7 @@ namespace CrestronNhlCloud
 		}
 
 		private readonly Dictionary<string, IPropertyValue> _properties = new Dictionary<string, IPropertyValue>();
-		private HttpApiTransport _httpApiTransport;
+		private NhlTransport _nhlTransport;
 		private ushort _currentTeamId;
 		private readonly List<IPropertyAvailableValue> _teamList;
 		private List<Team> _teams = new List<Team>();
@@ -54,6 +52,8 @@ namespace CrestronNhlCloud
 
 		public NhlExtension()
 		{
+			CrestronConsole.PrintLine("RAD EX: cstr start");
+
 			// Tile
 			_properties[TileStatus] = CreateProperty<string>(new PropertyDefinition(TileStatus, TileStatus, DevicePropertyType.String));
 			_properties[TileIcon] = CreateProperty<string>(new PropertyDefinition(TileIcon, TileIcon, DevicePropertyType.String));
@@ -63,10 +63,14 @@ namespace CrestronNhlCloud
 			_teamList = new List<IPropertyAvailableValue>();
 			_properties[SelectorButtonValueTeam] = CreateProperty<ushort>(new PropertyDefinition(SelectorButtonValueTeam, SelectorButtonValueTeam, DevicePropertyType.UInt16, _teamList));
 
-			Refresh();
-			Commit();
+			// initial values
+			((PropertyValue<string>)_properties[TileStatus]).Value = "-";
+			((PropertyValue<string>)_properties[TileIcon]).Value = "icBroadcastRegular";
+			((PropertyValue<string>)_properties[TileSecondaryIcon]).Value = "icSettings";
+			//((PropertyValue<ushort>)_properties[SelectorButtonValueTeam]).Value = 1;
 
-			CrestronConsole.PrintLine("RAD EX: cstr");
+			Commit();
+			CrestronConsole.PrintLine("RAD EX: cstr end");
 		}
 
 		[ProgrammableEvent ("^GoalScored")]
@@ -74,11 +78,12 @@ namespace CrestronNhlCloud
 
 		public void Initialize()
 		{
-			_httpApiTransport = new HttpApiTransport();
+			CrestronConsole.PrintLine("RAD EXT: ini");
+			_nhlTransport = new NhlTransport();
 			_pollTimer = new Timer(PollTimerCallback, null, TimeSpan.FromMinutes(0), Timeout.InfiniteTimeSpan);
 
 			Commit();
-			CrestronConsole.PrintLine("RAD EX: inid");
+			CrestronConsole.PrintLine("RAD EX: ini'd");
 
 		}
 
@@ -172,7 +177,7 @@ namespace CrestronNhlCloud
 					if (!_teamList.Any())
 					{
 						CrestronConsole.PrintLine("initialize");
-						_teams = _httpApiTransport.GetTeams();
+						_teams = _nhlTransport.GetTeams();
 						if (_teams == null)
 						{
 							CrestronConsole.PrintLine("cant connect to nhl");
@@ -226,7 +231,7 @@ namespace CrestronNhlCloud
 					{
 						CrestronConsole.PrintLine("Poll");
 
-						var schedule = _httpApiTransport.GetTeamSchedule(teamId);
+						var schedule = _nhlTransport.GetTeamSchedule(teamId);
 						if (schedule == null)
 						{
 							CrestronConsole.PrintLine("no sched");
@@ -328,44 +333,5 @@ namespace CrestronNhlCloud
 				CrestronConsole.PrintLine(exception.Message);
 			}
 		}
-
-		private void Refresh()
-		{
-			((PropertyValue<string>)_properties[TileStatus]).Value = "-";
-			((PropertyValue<string>)_properties[TileIcon]).Value = "icBroadcastRegular";
-			((PropertyValue<string>)_properties[TileSecondaryIcon]).Value = "icSettings";
-
-			//((PropertyValue<ushort>)_properties[SelectorButtonValueTeam]).Value = 1;
-		}
-
-		private void TestMeth()
-		{
-			CrestronConsole.PrintLine("meth");
-			var credentials = new Credentials { Host = "192.168.1.63", Name = "me", Token = "9mR2kSxXjhhy", Timeout = 3000 };
-
-			try
-			{
-				_cancellationTokenSource = new CancellationTokenSource(credentials.Timeout);
-
-				var session = UpdateSession(credentials, _cancellationTokenSource.Token);
-				((PropertyValue<string>)_properties[TileStatus]).Value = session.Success ? "Success" : session.ErrorMessage;
-
-				CrestronConsole.PrintLine("meth tried ok");
-
-			}
-			catch (Exception e)
-			{
-				CrestronConsole.PrintLine("meth catch");
-
-				var NewLine = Environment.NewLine;
-				var s = e is OperationCanceledException _
-					? $"Hostname lookup is taking too long{NewLine}If your network cannot resolve Hostnames, use IP addresses"
-					: $"Oops, something went wrong.{NewLine}¯\\_(ツ)_/¯{NewLine}{e.Message}";
-
-				((PropertyValue<string>)_properties[TileStatus]).Value = s;
-			}
-
-		}
-
 	}
 }

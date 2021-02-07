@@ -3,11 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-using Crestron.SimplSharp;
 using Crestron.SimplSharp.Net.Http;
 
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 
 using NhlApi.Models.Schedule;
 using NhlApi.Models.Teams;
@@ -17,12 +15,11 @@ using Team = NhlApi.Models.Teams.Team;
 
 namespace CrestronNhlCloud.Transport
 {
-	internal class HttpApiTransport : IDisposable
+	internal class NhlTransport : IDisposable
 	{
 		private readonly HttpClient _httpClient;
-		private readonly string _baseUrl = "http://statsapi.web.nhl.com/api/v1/";
 
-		internal HttpApiTransport()
+		internal NhlTransport()
 		{
 			_httpClient = new HttpClient
 			{
@@ -38,10 +35,12 @@ namespace CrestronNhlCloud.Transport
 			_httpClient.Dispose();
 		}
 
+		public string SetBaseUrl { private get; set; } = "http://statsapi.web.nhl.com/api/v1/";
+
 		public List<Team> GetTeams()
 		{
 			var httpClientRequest = new HttpClientRequest();
-			httpClientRequest.Url.Parse($"{_baseUrl}teams");
+			httpClientRequest.Url.Parse($"{SetBaseUrl}teams");
 			httpClientRequest.Header.AddHeader(new HttpHeader("Accept", "application/json"));
 			httpClientRequest.Header.AddHeader(new HttpHeader("User-Agent", "NhlUpdate-0.0.0"));
 
@@ -58,7 +57,7 @@ namespace CrestronNhlCloud.Transport
 		public Schedule GetTeamSchedule(ushort teamId)
 		{
 			var httpClientRequest = new HttpClientRequest();
-			httpClientRequest.Url.Parse($"{_baseUrl}schedule?teamId={teamId}");
+			httpClientRequest.Url.Parse($"{SetBaseUrl}schedule?teamId={teamId}");
 			httpClientRequest.Header.AddHeader(new HttpHeader("Accept", "application/json"));
 			httpClientRequest.Header.AddHeader(new HttpHeader("User-Agent", "NhlUpdate-0.0.0"));
 
