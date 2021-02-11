@@ -9,7 +9,16 @@
     <Import_RootNamespace>NhlApiShared</Import_RootNamespace>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="$(MSBuildThisFileDirectory)Models\Schedule\Schedule.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Models\Teams\Teams.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Api\Models\Schedule\Schedule.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Api\Models\Teams\Teams.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Application\Logic.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Application\UiObjects.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)IApplication.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)IPlatform.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)ISettings.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="$(MSBuildThisFileDirectory)Api\Models\Schedule\" />
+    <Folder Include="$(MSBuildThisFileDirectory)Api\Models\Teams\" />
   </ItemGroup>
 </Project>
