@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using Newtonsoft.Json;
 
 
-namespace Api.Models.Schedule
+namespace NhlApiShared.Api.Models.Schedule
 {
 	public class Schedule
 	{
@@ -78,7 +78,7 @@ namespace Api.Models.Schedule
 		public Status Status { get; set; }
 
 		[JsonProperty(PropertyName = "teams")]
-		public Teams Teams { get; set; }
+		public Participants Participants { get; set; }
 
 		[JsonProperty(PropertyName = "venue")]
 		public Venue Venue { get; set; }
@@ -105,25 +105,13 @@ namespace Api.Models.Schedule
 		public bool StartTimeTbd { get; set; }
 	}
 
-	public class Teams
+	public class Participants
 	{
 		[JsonProperty(PropertyName = "away")]
-		public HomeAway Away { get; set; }
+		public Designation Away { get; set; }
 
 		[JsonProperty(PropertyName = "home")]
-		public HomeAway Home { get; set; }
-	}
-
-	public class Team
-	{
-		[JsonProperty(PropertyName = "id")]
-		public int Id { get; set; }
-
-		[JsonProperty(PropertyName = "name")]
-		public string Name { get; set; }
-
-		[JsonProperty(PropertyName = "link")]
-		public string Link { get; set; }
+		public Designation Home { get; set; }
 	}
 
 	public class Venue
@@ -141,6 +129,18 @@ namespace Api.Models.Schedule
 		public string Link { get; set; }
 	}
 
+	public class Designation
+	{
+		[JsonProperty(PropertyName = "leagueRecord")]
+		public LeagueRecord LeagueRecord { get; set; }
+
+		[JsonProperty(PropertyName = "score")]
+		public int Score { get; set; }
+
+		[JsonProperty(PropertyName = "team")]
+		public Team Team { get; set; }
+	}
+
 	public class LeagueRecord
 	{
 		[JsonProperty(PropertyName = "wins")]
@@ -156,15 +156,15 @@ namespace Api.Models.Schedule
 		public string Type { get; set; }
 	}
 
-	public class HomeAway
+	public class Team
 	{
-		[JsonProperty(PropertyName = "leagueRecord")]
-		public LeagueRecord LeagueRecord { get; set; }
+		[JsonProperty(PropertyName = "id")]
+		public int Id { get; set; }
 
-		[JsonProperty(PropertyName = "score")]
-		public int Score { get; set; }
+		[JsonProperty(PropertyName = "name")]
+		public string Name { get; set; }
 
-		[JsonProperty(PropertyName = "team")]
-		public Team Team { get; set; }
+		[JsonProperty(PropertyName = "link")]
+		public string Link { get; set; }
 	}
 }

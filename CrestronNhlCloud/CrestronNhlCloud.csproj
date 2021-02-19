@@ -139,6 +139,9 @@
     <Compile Include="NhlExtension.cs" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\.editorconfig">
+      <Link>.editorconfig</Link>
+    </None>
     <None Include="IncludeInPkg\Translations\en-US.json" />
     <None Include="packages.config" />
     <EmbeddedResource Include="NhlExtension.json" />
@@ -157,4 +160,11 @@
     <Error Condition="!Exists('..\packages\Crestron.SimplSharp.SDK.ProgramLibrary.2.14.134\build\Crestron.SimplSharp.SDK.ProgramLibrary.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Crestron.SimplSharp.SDK.ProgramLibrary.2.14.134\build\Crestron.SimplSharp.SDK.ProgramLibrary.targets'))" />
   </Target>
   <Import Project="..\packages\Crestron.SimplSharp.SDK.ProgramLibrary.2.14.134\build\Crestron.SimplSharp.SDK.ProgramLibrary.targets" Condition="Exists('..\packages\Crestron.SimplSharp.SDK.ProgramLibrary.2.14.134\build\Crestron.SimplSharp.SDK.ProgramLibrary.targets')" />
+  <PropertyGroup>
+    <PostBuildEvent>xcopy "$(ProjectDir)\IncludeInPkg\*" "$(ProjectDir)\bin\build\IncludeInPkg\" /f /y /i /e
+xcopy "$(TargetPath)" "$(ProjectDir)\bin\build" /F /Y
+cd $(ProjectDir)\bin\build
+"$(ProjectDir)bin\build\ManifestUtil.exe"
+</PostBuildEvent>
+  </PropertyGroup>
 </Project>

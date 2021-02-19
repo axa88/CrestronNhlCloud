@@ -1,13 +1,25 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
-using Api.Models.Teams;
+using NhlApiShared.Api.Models.Teams;
 
 
 namespace NhlApiShared
 {
 	public interface IApplication
 	{
-		IEnumerable<object> TeamList { get; }
-		void AddTeams(IEnumerable<Team> teams);
+		event Action PreGameStarted;
+		event Action GameStarted;
+		event Action PuckDropped;
+		event Action OverTimeStarted;
+		event Action GameEnded;
+		event Action TeamGoalScored;
+		event Action OpponentGoalScored;
+
+		//IEnumerable<object> TeamList { get; }
+
+		//void AddTeams(IEnumerable<Team> teams);
+
+		//void TeamChanged();
 	}
 }

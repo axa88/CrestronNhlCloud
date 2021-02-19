@@ -2,8 +2,8 @@
 using System.Collections.Generic;
 using System.Text;
 
-using Api.Models.Schedule;
-using Api.Models.Teams;
+using NhlApiShared.Api.Models.Schedule;
+using NhlApiShared.Api.Models.Teams;
 
 using Crestron.SimplSharp.Net.Http;
 
@@ -34,7 +34,7 @@ namespace CrestronNhlCloud.Transport
 
 		public string SetBaseUrl { private get; set; } = "http://statsapi.web.nhl.com/api/v1/";
 
-		public List<Api.Models.Teams.Team> GetTeams()
+		public List<NhlApiShared.Api.Models.Teams.Team> GetTeams()
 		{
 			var httpClientRequest = new HttpClientRequest();
 			httpClientRequest.Url.Parse($"{SetBaseUrl}teams");

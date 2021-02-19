@@ -3,7 +3,7 @@
 using Newtonsoft.Json;
 
 
-namespace Api.Models.Teams
+namespace NhlApiShared.Api.Models.Teams
 {
 	public enum Tz { Cst, Est, Mst, Pst };
 	public enum Division { DiscoverCentral, HondaWest, MassMutualEast, ScotiaNorth };

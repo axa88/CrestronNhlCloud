@@ -2,7 +2,6 @@
 {
 	public interface ISettings
 	{
-		void PrintLine(string message);
 		bool GetBoolSetting(string key);
 		void SetBoolSetting(string key, bool value);
 		ushort GetNumberSetting(string key);

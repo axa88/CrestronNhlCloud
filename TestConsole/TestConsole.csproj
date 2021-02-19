@@ -43,11 +43,26 @@
     <Reference Include="System.Net.Http" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="NhlExtension.cs" />
+    <Compile Include="Portability\AExtensionDevice.cs" />
     <Compile Include="Portability\DevicePropertyType.cs" />
+    <Compile Include="Portability\ExtensionDeviceLogHelper.cs" />
+    <Compile Include="Portability\ExtensionDevicePropertyHelper.cs" />
+    <Compile Include="Portability\IClassDefinition.cs" />
+    <Compile Include="Portability\IDeviceCapability.cs" />
+    <Compile Include="Portability\IDriverInitialization.cs" />
+    <Compile Include="Portability\IOperationResult.cs" />
     <Compile Include="Portability\IPropertyAvailableValue.cs" />
+    <Compile Include="Portability\IPropertyDefinition.cs" />
     <Compile Include="Portability\IPropertyValue.cs" />
+    <Compile Include="Portability\Logger.cs" />
+    <Compile Include="Portability\LoggingLevel.cs" />
+    <Compile Include="Portability\OperationResult.cs" />
     <Compile Include="Portability\PropertyAvailableValue.cs" />
+    <Compile Include="Portability\PropertyDefinition.cs" />
     <Compile Include="Portability\PropertyValue.cs" />
+    <Compile Include="Portability\PropertyValuesEventArgs.cs" />
+    <Compile Include="Portability\ValueEventArgs.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Transport\HttpTransport.cs" />

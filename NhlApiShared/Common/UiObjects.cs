@@ -1,4 +1,4 @@
-﻿namespace NhlApiShared.Application
+﻿namespace NhlApiShared.Common
 {
 	public static class UiObjects
 	{

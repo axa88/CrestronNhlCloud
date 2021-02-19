@@ -1,27 +1,23 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 
-using Crestron.RAD.Common;
-using Crestron.RAD.Common.Attributes.Programming;
-using Crestron.RAD.Common.CloudReporting;
 using Crestron.RAD.Common.Enums;
-using Crestron.RAD.Common.ExtensionMethods;
-using Crestron.RAD.Common.Interfaces;
 using Crestron.RAD.Common.Interfaces.ExtensionDevice;
 using Crestron.RAD.DeviceTypes.ExtensionDevice;
 
-using NhlApiShared;
 using NhlApiShared.Common;
 
-using CrestronNhlCloud.Transport;
+using NhlApiShared;
 
-
+using TestConsole.Portability;
+using TestConsole.Transport;
 using static NhlApiShared.Common.UiObjects;
 
 
-namespace CrestronNhlCloud
+namespace TestConsole
 {
-	public class NhlExtension : AExtensionDevice, ICloudConnected, IApplication, IPlatform, ISettings
+	public class NhlExtension :  AExtensionDevice, IApplication, IPlatform, ISettings
 	{
 		public HttpTransport HttpTransport;
 		private Logic _logic;
@@ -42,45 +38,44 @@ namespace CrestronNhlCloud
 			PrintLine("RAD EX: cstr end");
 		}
 
+		#region This Only // replaced with a UI
+		internal event Action<string> StatusChanged;
+		public bool SetCurrentTeam(string abbr)
+		{
+			// with a UI use GetProperty, until then...
+			var availableValue = (PropertyAvailableValue<ushort>)_logic.TeamList.FirstOrDefault(propertyAvailableValue => propertyAvailableValue.LabelLocalizationKey == abbr);
+			if (availableValue == null)
+				return false;
+
+			((PropertyValue<ushort>)_logic.Properties[SelectorButtonValueTeam]).Value = availableValue.Value;
+			return true;
+		}
+		#endregion
+
 		#region Implementation of ICloudConnected
 		public void Initialize()
 		{
-			PrintLine("RAD EXT: ini start");
-
+			PrintLine("RAD EXT: ini");
 			try
 			{
 				HttpTransport = new HttpTransport();
 				_logic = new Logic(this);
 				_logic.TeamGoalScored += () => TeamGoalScored?.Invoke();
 				_logic.Initialize();
-
 			}
 			catch (Exception e) { CatchPrint(e); }
 
-			PrintLine("RAD EX: ini end");
+			PrintLine("RAD EX: ini'd");
 		}
 		#endregion
 
 		#region Implementation of IApplication
-		[ProgrammableEvent ("^PreGameStarted")]
 		public event Action PreGameStarted;
-
-		[ProgrammableEvent ("^GameStarted")]
 		public event Action GameStarted;
-
-		[ProgrammableEvent ("^PuckDropped")]
 		public event Action PuckDropped;
-
-		[ProgrammableEvent ("^OverTimeStarted")]
 		public event Action OverTimeStarted;
-
-		[ProgrammableEvent ("^GameEnded")]
 		public event Action GameEnded;
-
-		[ProgrammableEvent ("^TeamGoalScored")]
 		public event Action TeamGoalScored;
-
-		[ProgrammableEvent ("^OpponentGoalScored")]
 		public event Action OpponentGoalScored;
 		#endregion
 
@@ -147,7 +142,7 @@ namespace CrestronNhlCloud
 						if (Convert.ToUInt16(value) != old)
 						{
 							PrintLine("team changed");
-							_logic.PollTimerCallback(this);
+							_logic.PollTimerCallback(null);
 						}
 
 						break;

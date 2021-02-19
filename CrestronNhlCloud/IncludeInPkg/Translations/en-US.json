@@ -8,7 +8,13 @@
 	"SubheaderGoalActionSelectorLabel": "Select Your Goal Action:",
 	"SelectorButtonLabelAction": "Your Action:",
 
-	"GoalScored": "Goal Scored",
+	"PreGameStarted": "Pre-Game Started",
+	"GameStarted": "Game Started",
+	"PuckDropped": "Puck Dropped",
+	"OverTimeStarted": "Overtime Started",
+	"GameEnded": "Game Ended",
+	"TeamGoalScored": "Goal Scored",
+	"OpponentGoalScored": "Opponent Scored",
 
 	"NJD": "New Jersey Devils",
 	"NYI": "New York Islanders",
