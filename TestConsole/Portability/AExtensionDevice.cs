@@ -3,19 +3,23 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 
+using Crestron.RAD.Common;
+using Crestron.RAD.Common.BasicDriver;
 using Crestron.RAD.Common.Enums;
 using Crestron.RAD.Common.Events;
+using Crestron.RAD.Common.ExtensionMethods;
 using Crestron.RAD.Common.Interfaces;
 using Crestron.RAD.DeviceTypes.ExtensionDevice;
 using Crestron.RAD.Common.Interfaces.ExtensionDevice;
-using Crestron.RAD.Common.Logging;
 
 using Newtonsoft.Json;
+
+using CType = System.Type;
 
 
 namespace TestConsole.Portability
 {
-	public abstract class AExtensionDevice : IDisposable
+	public abstract class AExtensionDevice : ABasicDriver, IDisposable
 	{
 		#region Fields
 		private const string ClassNameForLogging = nameof(AExtensionDevice);
@@ -68,7 +72,6 @@ namespace TestConsole.Portability
 		private EventHandler _languageTranslationsChangedEventHandler;
 		#endregion
 
-		private bool _connected;
 
 		protected AExtensionDevice()
 		{
@@ -80,6 +83,59 @@ namespace TestConsole.Portability
 			_propertyValues = new Dictionary<string, IPropertyValue>();
 			_pendingPropertyValueChanges = new Dictionary<string, IPropertyValue>();
 		}
+
+		#region ABasicDriver Members
+
+		/// <summary>
+		/// Converts the json file for this driver into C# data.
+		/// </summary>
+		public override sealed void ConvertJsonFileToDriverData(string jsonString)
+		{
+			Initialize(JsonConvert.DeserializeObject<ExtensionDeviceRootObject>(jsonString, CreateSerializerSettings()));
+		}
+
+		/// <summary>
+		/// Returns the type of this object.
+		/// </summary>
+		public override sealed CType AbstractClassType
+		{
+			get { return GetType(); }
+		}
+
+		/// <summary>
+		/// Used internally by all device-type libraries.
+		/// <para />Drivers should not override this.
+		/// </summary>
+		/// <returns>JsonSerializerSettings used for deserializing the JSON driver data.</returns>
+		protected JsonSerializerSettings CreateSerializerSettings()
+		{
+			var deviceSupportNodeConverter = CreateDeviceSupportConverter();
+
+			var serializerSettings = new JsonSerializerSettings();
+
+			serializerSettings.Converters.Add(new AuthenticationJsonConverter());
+			serializerSettings.Converters.Add(new StandardCommandConverter());
+
+			if (deviceSupportNodeConverter.Exists())
+			{
+				serializerSettings.Converters.Add(deviceSupportNodeConverter);
+			}
+
+			return serializerSettings;
+		}
+
+		/// <summary>
+		/// Used internally by all device-type libraries.
+		/// <para />Drivers should not override this.
+		/// </summary>
+		/// <returns>JsonConverter used by CreateSerializerSettings() to handle the DeviceSupport data in the JSON driver data.</returns>
+		protected virtual JsonConverter CreateDeviceSupportConverter()
+		{
+			// No base implementation
+			return null;
+		}
+
+		#endregion
 
 		/// <summary>
 		/// Create a property that is a value type such as int, string, bool, etc.
@@ -472,50 +528,6 @@ namespace TestConsole.Portability
 			_driverSettingsChangedEventHandler.Invoke(this, new DriverSettingsEventArgs(driverSettings));
 		}
 
-		#region IConnection3 Members
-		protected static void Log(string message) => Console.WriteLine($"{DateTime.Now.Ticks}::{DateTime.Now}::{message}");
-
-		/// <summary>
-		/// Specifies the driver is currently connected to the device.
-		/// <para /> Ethernet driver will set this to true when the socket state is OK.
-		/// <para /> HTTP drivers will set this to true when communication is possible with the device.
-		/// <para /> COM and CEC drivers will set this value if they receive any data from the device.
-		/// <para /> IR drivers will not set this to true.
-		/// </summary>
-		protected bool Connected
-		{
-			get => _connected;
-			set
-			{
-				if (_connected != value)
-				{
-					_connected = value;
-
-					if (EnableLogging)
-						Log($"Connected changed - new state: {_connected}");
-
-					if (ConnectedChanged != null)
-					{
-						if (EnableLogging)
-							Log($"Raising {nameof(ConnectedChanged)} event");
-
-						ConnectedChanged.Invoke(this, new ValueEventArgs<bool>(_connected));
-					}
-					else
-					{
-						if (EnableLogging)
-							Log($"Nothing is subscribed to the {nameof(ConnectedChanged)} event");
-					}
-				}
-			}
-		}
-
-		/// <summary>
-		/// Event that is raised if the <see cref="Connected"/> property changes.
-		/// </summary>
-		public event EventHandler<ValueEventArgs<bool>> ConnectedChanged;
-
-		#endregion IConnection3 Members
 		#endregion
 
 		#region IBasicLogger
@@ -523,7 +535,7 @@ namespace TestConsole.Portability
 		/// <summary>
 		/// Property to enable Logging statements.
 		/// </summary>
-		public bool EnableLogging { get; set; }
+
 
 		#endregion
 

@@ -1,20 +1,20 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 
 using Crestron.RAD.Common;
 using Crestron.RAD.Common.Attributes.Programming;
-using Crestron.RAD.Common.CloudReporting;
 using Crestron.RAD.Common.Enums;
 using Crestron.RAD.Common.ExtensionMethods;
 using Crestron.RAD.Common.Interfaces;
 using Crestron.RAD.Common.Interfaces.ExtensionDevice;
 using Crestron.RAD.DeviceTypes.ExtensionDevice;
+using Crestron.SimplSharp;
 
 using NhlApiShared;
 using NhlApiShared.Common;
 
 using CrestronNhlCloud.Transport;
-
 
 using static NhlApiShared.Common.UiObjects;
 
@@ -31,7 +31,7 @@ namespace CrestronNhlCloud
 			PrintLine("RAD EX: cstr start");
 			try
 			{
-
+				CrestronConsole.AddNewConsoleCommand(ConsoleReader, "log", "Set Loggin On or Off general logging for the driver", ConsoleAccessLevelEnum.AccessProgrammer);
 			}
 			catch (Exception e)
 			{
@@ -42,6 +42,17 @@ namespace CrestronNhlCloud
 			PrintLine("RAD EX: cstr end");
 		}
 
+		#region IDisposable
+		public override void Dispose()
+		{
+			PrintLine("Ext Dispose");
+
+			HttpTransport?.Dispose();
+			_logic?.Dispose();
+			base.Dispose();
+		}
+		#endregion
+
 		#region Implementation of ICloudConnected
 		public void Initialize()
 		{
@@ -50,10 +61,16 @@ namespace CrestronNhlCloud
 			try
 			{
 				HttpTransport = new HttpTransport();
-				_logic = new Logic(this);
-				_logic.TeamGoalScored += () => TeamGoalScored?.Invoke();
-				_logic.Initialize();
 
+				_logic = new Logic(this);
+				_logic.PreGameStarted += () => PreGameStarted?.Invoke();
+				_logic.PuckDropped += () => PuckDropped?.Invoke();
+				_logic.CriticalGamePlayStarted += () => CriticalGamePlayStarted?.Invoke();
+				_logic.GameEnded += () => GameEnded?.Invoke();
+				_logic.TeamGoalScored += () => TeamGoalScored?.Invoke();
+				_logic.OpponentGoalScored += () => OpponentGoalScored?.Invoke();
+
+				_logic.Initialize();
 			}
 			catch (Exception e) { CatchPrint(e); }
 
@@ -65,14 +82,11 @@ namespace CrestronNhlCloud
 		[ProgrammableEvent ("^PreGameStarted")]
 		public event Action PreGameStarted;
 
-		[ProgrammableEvent ("^GameStarted")]
-		public event Action GameStarted;
-
 		[ProgrammableEvent ("^PuckDropped")]
 		public event Action PuckDropped;
 
-		[ProgrammableEvent ("^OverTimeStarted")]
-		public event Action OverTimeStarted;
+		[ProgrammableEvent ("^CriticalGamePlayStarted")]
+		public event Action CriticalGamePlayStarted;
 
 		[ProgrammableEvent ("^GameEnded")]
 		public event Action GameEnded;
@@ -88,6 +102,38 @@ namespace CrestronNhlCloud
 		public void UpdateUi() => Commit();
 		public void Connect(bool state) => Connected = state;
 		public void PrintLine(string message) => Log(message);
+		public void ConsoleReader(string args)
+		{
+			var input = args.Split(' ').Select(s => s.Trim()).ToList();;
+			if (input.Count < 2)
+				return;
+
+			switch (input[0])
+			{
+				case string log when log.Equals("log", StringComparison.OrdinalIgnoreCase):
+				{
+					switch (input[1])
+					{
+						case string on when on.Equals("on", StringComparison.OrdinalIgnoreCase):
+							EnableLogging = true;
+							break;
+						case string off when off.Equals("off", StringComparison.OrdinalIgnoreCase):
+							EnableLogging = true;
+							break;
+					}
+					break;
+				}
+
+				case string team when team.Equals("team", StringComparison.OrdinalIgnoreCase):
+				{
+					var availableValue = (PropertyAvailableValue<ushort>)_logic.TeamList.FirstOrDefault(propertyAvailableValue => propertyAvailableValue.LabelLocalizationKey == input[1]);
+					if (availableValue != default)
+						SetDriverPropertyValue(SelectorButtonValueTeam, availableValue.Value);
+					break;
+				}
+			}
+		}
+
 		public PropertyValue<T> CreateProperty<T>(string key, DevicePropertyType type, IEnumerable<IPropertyAvailableValue> availableValues = null)
 			=> CreateProperty<T>(availableValues == null ? new PropertyDefinition(key, key, type) : new PropertyDefinition(key, key, type, availableValues));
 		#endregion
@@ -135,21 +181,24 @@ namespace CrestronNhlCloud
 				{
 					case SelectorButtonValueTeam:
 						// if team changes
-						var old = ((PropertyValue<ushort>)_logic.Properties[SelectorButtonValueTeam]).Value;
-
-						// set button value to selected value
-						_logic.ChangeProperty(propertyKey, value);
-
-						// store current team
-						SetNumberSetting(nameof(DefaultTeamKey), ((PropertyValue<ushort>)_logic.Properties[SelectorButtonValueTeam]).Value);
-
-						// if team changed update
-						if (Convert.ToUInt16(value) != old)
+						if (_logic.Properties.ContainsKey(propertyKey))
 						{
-							PrintLine("team changed");
-							_logic.PollTimerCallback(this);
-						}
+							var oldTeam = ((PropertyValue<ushort>)_logic.Properties[propertyKey]).Value;
 
+							// set button value to selected value
+							_logic.ChangeProperty(propertyKey, value);
+
+							// store current team
+							SetNumberSetting(nameof(DefaultTeamKey), ((PropertyValue<ushort>)_logic.Properties[propertyKey]).Value);
+
+							// if team changed update
+							if (Convert.ToUInt16(value) != oldTeam
+							)
+							{
+								PrintLine("team changed");
+								_logic.PollTimerCallback(this);
+							}
+						}
 						break;
 				}
 
@@ -174,16 +223,5 @@ namespace CrestronNhlCloud
 			PrintLine(exception.Message);
 			PrintLine(exception.StackTrace);
 		}
-
-		#region IDisposable
-		public override void Dispose()
-		{
-			PrintLine("Ext Dispose");
-
-			HttpTransport?.Dispose();
-			_logic?.Dispose();
-			base.Dispose();
-		}
-		#endregion
 	}
 }

@@ -8,8 +8,6 @@
       <controls>
         <subheader id="SubheaderIdTeamSelector" label="^SubheaderLabelTeamSelector" />
         <selectorbutton id="SelectorButtonIdTeam" label="^SelectorButtonLabelTeam" value="{SelectorButtonValueTeam}" />
-        <subheader id="SubheaderGoalActionSelectorId" label="^SubheaderGoalActionSelectorLabel" />
-        <selectorbutton id="SelectorButtonIdAction" label="^SelectorButtonLabelAction" value="{SelectorButtonValueAction}" />
       </controls>
     </layout>
   </layouts>

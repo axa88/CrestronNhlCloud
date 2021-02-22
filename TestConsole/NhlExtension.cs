@@ -2,22 +2,24 @@
 using System.Collections.Generic;
 using System.Linq;
 
+using Crestron.RAD.Common.Attributes.Programming;
 using Crestron.RAD.Common.Enums;
+using Crestron.RAD.Common.Interfaces;
 using Crestron.RAD.Common.Interfaces.ExtensionDevice;
 using Crestron.RAD.DeviceTypes.ExtensionDevice;
 
-using NhlApiShared.Common;
-
 using NhlApiShared;
+using NhlApiShared.Common;
 
 using TestConsole.Portability;
 using TestConsole.Transport;
+
 using static NhlApiShared.Common.UiObjects;
 
 
 namespace TestConsole
 {
-	public class NhlExtension :  AExtensionDevice, IApplication, IPlatform, ISettings
+	public class NhlExtension :  AExtensionDevice, ICloudConnected, IApplication, IPlatform, ISettings
 	{
 		public HttpTransport HttpTransport;
 		private Logic _logic;
@@ -40,15 +42,17 @@ namespace TestConsole
 
 		#region This Only // replaced with a UI
 		internal event Action<string> StatusChanged;
-		public bool SetCurrentTeam(string abbr)
-		{
-			// with a UI use GetProperty, until then...
-			var availableValue = (PropertyAvailableValue<ushort>)_logic.TeamList.FirstOrDefault(propertyAvailableValue => propertyAvailableValue.LabelLocalizationKey == abbr);
-			if (availableValue == null)
-				return false;
 
-			((PropertyValue<ushort>)_logic.Properties[SelectorButtonValueTeam]).Value = availableValue.Value;
-			return true;
+		#endregion
+
+		#region IDisposable
+		public override void Dispose()
+		{
+			PrintLine("Ext Dispose");
+
+			HttpTransport?.Dispose();
+			_logic?.Dispose();
+			base.Dispose();
 		}
 		#endregion
 
@@ -56,26 +60,44 @@ namespace TestConsole
 		public void Initialize()
 		{
 			PrintLine("RAD EXT: ini");
+
 			try
 			{
 				HttpTransport = new HttpTransport();
+
 				_logic = new Logic(this);
+				_logic.PreGameStarted += () => PreGameStarted?.Invoke();
+				_logic.PuckDropped += () => PuckDropped?.Invoke();
+				_logic.CriticalGamePlayStarted += () => CriticalGamePlayStarted?.Invoke();
+				_logic.GameEnded += () => GameEnded?.Invoke();
 				_logic.TeamGoalScored += () => TeamGoalScored?.Invoke();
+				_logic.OpponentGoalScored += () => OpponentGoalScored?.Invoke();
+
 				_logic.Initialize();
 			}
 			catch (Exception e) { CatchPrint(e); }
 
-			PrintLine("RAD EX: ini'd");
+			PrintLine("RAD EX: ini end");
 		}
 		#endregion
 
 		#region Implementation of IApplication
+		[ProgrammableEvent ("^PreGameStarted")]
 		public event Action PreGameStarted;
-		public event Action GameStarted;
+
+		[ProgrammableEvent ("^PuckDropped")]
 		public event Action PuckDropped;
-		public event Action OverTimeStarted;
+
+		[ProgrammableEvent ("^CriticalGamePlayStarted")]
+		public event Action CriticalGamePlayStarted;
+
+		[ProgrammableEvent ("^GameEnded")]
 		public event Action GameEnded;
+
+		[ProgrammableEvent ("^TeamGoalScored")]
 		public event Action TeamGoalScored;
+
+		[ProgrammableEvent ("^OpponentGoalScored")]
 		public event Action OpponentGoalScored;
 		#endregion
 
@@ -83,6 +105,39 @@ namespace TestConsole
 		public void UpdateUi() => Commit();
 		public void Connect(bool state) => Connected = state;
 		public void PrintLine(string message) => Log(message);
+
+		public void ConsoleReader(string args)
+		{
+			var input = args.Split(' ').Select(s => s.Trim()).ToList();;
+			if (input.Count < 2)
+				return;
+
+			switch (input[0])
+			{
+				case string log when log.Equals("log", StringComparison.OrdinalIgnoreCase):
+				{
+					switch (input[1])
+					{
+						case string on when on.Equals("on", StringComparison.OrdinalIgnoreCase):
+							EnableLogging = true;
+							break;
+						case string off when off.Equals("off", StringComparison.OrdinalIgnoreCase):
+							EnableLogging = true;
+							break;
+					}
+					break;
+				}
+
+				case string team when team.Equals("team", StringComparison.OrdinalIgnoreCase):
+				{
+					var availableValue = (PropertyAvailableValue<ushort>)_logic.TeamList.FirstOrDefault(propertyAvailableValue => propertyAvailableValue.LabelLocalizationKey == input[1]);
+					if (availableValue != default)
+						SetDriverPropertyValue(SelectorButtonValueTeam, availableValue.Value);
+					break;
+				}
+			}
+		}
+
 		public PropertyValue<T> CreateProperty<T>(string key, DevicePropertyType type, IEnumerable<IPropertyAvailableValue> availableValues = null)
 			=> CreateProperty<T>(availableValues == null ? new PropertyDefinition(key, key, type) : new PropertyDefinition(key, key, type, availableValues));
 		#endregion
@@ -90,7 +145,8 @@ namespace TestConsole
 		#region Implementation of ISettings
 		public bool GetBoolSetting(string key) => Convert.ToBoolean(GetSetting(key));
 		public void SetBoolSetting(string key, bool value) => SaveSetting(key, value);
-		public ushort GetNumberSetting(string key) => Convert.ToUInt16(GetSetting(key));
+		//public ushort GetNumberSetting(string key) => Convert.ToUInt16(GetSetting(key));
+		public ushort GetNumberSetting(string key) => 1;
 		public void SetNumberSetting(string key, ushort value) => SaveSetting(key, value);
 		public string GetStringSetting(string key) => GetSetting(key).ToString();
 		public void SetStringSetting(string key, string value) => SaveSetting(key, value);
@@ -130,13 +186,13 @@ namespace TestConsole
 				{
 					case SelectorButtonValueTeam:
 						// if team changes
-						var old = ((PropertyValue<ushort>)_logic.Properties[SelectorButtonValueTeam]).Value;
+						var old = ((PropertyValue<ushort>)_logic.Properties[propertyKey]).Value;
 
 						// set button value to selected value
 						_logic.ChangeProperty(propertyKey, value);
 
 						// store current team
-						SetNumberSetting(nameof(DefaultTeamKey), ((PropertyValue<ushort>)_logic.Properties[SelectorButtonValueTeam]).Value);
+						SetNumberSetting(nameof(DefaultTeamKey), ((PropertyValue<ushort>)_logic.Properties[propertyKey]).Value);
 
 						// if team changed update
 						if (Convert.ToUInt16(value) != old)
@@ -169,16 +225,5 @@ namespace TestConsole
 			PrintLine(exception.Message);
 			PrintLine(exception.StackTrace);
 		}
-
-		#region IDisposable
-		public override void Dispose()
-		{
-			PrintLine("Ext Dispose");
-
-			HttpTransport?.Dispose();
-			_logic?.Dispose();
-			base.Dispose();
-		}
-		#endregion
 	}
 }

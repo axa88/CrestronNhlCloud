@@ -7,7 +7,7 @@
       "Manufacturer": "Crestron",
       "BaseModel": "NHL Update",
       "VersionDate": "2021-01-01 00:00:00.000",
-      "DriverVersion": "4.1.001.0",
+      "DriverVersion": "4.1.000.0",
       "SdkVersion": "4.1.0",
       "Description": "Nhl Extensions for Crestron Home",
       "Guid": "74b0e357-a578-4086-8c16-b4bc11aa9ac5",

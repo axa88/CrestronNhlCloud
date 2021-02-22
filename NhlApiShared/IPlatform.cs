@@ -26,6 +26,7 @@ namespace NhlApiShared
 		// Generic
 		void Connect(bool state);
 		void PrintLine(string message);
+		void ConsoleReader(string args);
 
 		// Ui
 		PropertyValue<T> CreateProperty<T>(string key, DevicePropertyType type, IEnumerable<IPropertyAvailableValue> availableValues = null);

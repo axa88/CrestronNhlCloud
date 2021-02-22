@@ -44,7 +44,12 @@ namespace NhlApiShared.Common
 		private int _myTeamScore;
 		private int _opponentScore;
 		private Designation _myLastTeam;
+		private byte _lastStatusCode;
 		private bool _gameStarted;
+
+		private TimeSpan _pregameOffset = TimeSpan.FromMinutes(30);
+		private TimeSpan _puckDropOffset = TimeSpan.FromMinutes(8);
+		private TimeSpan _liveDelay = TimeSpan.FromSeconds(45);
 
 		public Logic(object ext)
 		{
@@ -59,9 +64,8 @@ namespace NhlApiShared.Common
 		}
 
 		public event Action PreGameStarted;
-		public event Action GameStarted;
 		public event Action PuckDropped;
-		public event Action OverTimeStarted;
+		public event Action CriticalGamePlayStarted;
 		public event Action GameEnded;
 		public event Action TeamGoalScored;
 		public event Action OpponentGoalScored;
@@ -69,7 +73,6 @@ namespace NhlApiShared.Common
 		internal void Initialize()
 		{
 			_extension.PrintLine("ini ini start");
-			_extension.EnableLogging = true;
 
 			// Tile
 			Properties[TileStatus] = _extension.CreateProperty<string>(TileStatus, DevicePropertyType.String);
@@ -85,15 +88,17 @@ namespace NhlApiShared.Common
 			//ChangeProperty(TileSecondaryIcon, "icSettings");
 
 			_pollTimer = new Timer(PollTimerCallback, null, TimeSpan.FromMinutes(0), Timeout.InfiniteTimeSpan);
+
 			_extension.PrintLine("ini ini end");
 		}
 
 		internal void ChangeProperty<T>(string key, T value)
 		{
-			_extension.PrintLine($"{nameof(ChangeProperty)}: {nameof(key)}: {key} {nameof(value)}: {value}");
 			((PropertyValue<T>)Properties[key]).Value = value;
 			_extension.UpdateUi();
 		}
+
+		internal T GetProperty<T>(string key) => ((PropertyValue<T>)Properties[key]).Value;
 
 		internal void PollTimerCallback(object state)
 		{
@@ -111,8 +116,6 @@ namespace NhlApiShared.Common
 				}
 			}
 			catch (Exception e) { _extension.CatchPrint(e); }
-
-			_extension.PrintLine($"{nameof(PollTimerCallback)} end");
 		}
 
 		private bool PollInitializationLogic()
@@ -131,7 +134,6 @@ namespace NhlApiShared.Common
 				_extension.PrintLine("restore");
 				var recalledTeamId = _extension.GetNumberSetting(nameof(DefaultTeamKey));
 				if (recalledTeamId != default)
-					//NumberPropertyChanged?.Invoke(SelectorButtonValueTeam, recalledTeamId);
 					ChangeProperty(SelectorButtonValueTeam, recalledTeamId);
 			}
 
@@ -141,9 +143,6 @@ namespace NhlApiShared.Common
 		private TimeSpan PollBusinessLogic(ushort teamId)
 		{
 			TimeSpan pollTime;
-
-			#region app
-			_extension.PrintLine("Poll");
 
 			var schedule = _extension.HttpTransport.GetTeamSchedule(teamId);
 			if (schedule != null)
@@ -159,61 +158,60 @@ namespace NhlApiShared.Common
 						switch (statusCode)
 						{
 							case 1: // Preview "Scheduled"
-								status = $"Game Time: {game.GameDate:hh:mm t}";
-								pollTime = TimeSpan.FromMinutes(10);
+								status = $"Game Time: {game.GameDate:H:mm}";
+								var previewPollResolution = TimeSpan.FromMinutes(10);
+								var previewRemaining = game.GameDate - _pregameOffset - DateTime.Now;
+								pollTime = previewRemaining < previewPollResolution ? previewRemaining : previewPollResolution;
 								break;
 							case 2: // Preview "Pre-Game"
 								status = $"{game.Status.DetailedState}";
-								pollTime = game.GameDate - DateTime.Now > TimeSpan.MinValue ? TimeSpan.FromMinutes(1) : TimeSpan.FromSeconds(15);
+								if (_currentGame == game.GamePk && statusCode != _lastStatusCode)
+									PreGameStarted?.Invoke();
+								pollTime = game.GameDate > DateTime.Now ? TimeSpan.FromMinutes(1) : TimeSpan.FromSeconds(10);
 								break;
 							case 8: // Preview "Scheduled (Time TBD)"
 								status = $"Game Time: TBD";
 								pollTime = TimeSpan.FromMinutes(10);
 								break;
 							case 3: // Live "In Progress"
-								var liveStandings = myTeam.Score > opponent.Score ? "W" : myTeam.Score < opponent.Score ? "L" : "";
-								status = $"{game.Status.AbstractGameState}: {liveStandings} {game.Participants.Away.Score} - {game.Participants.Home.Score}";
+								var liveStatus = myTeam.Score > opponent.Score ? "W" : myTeam.Score < opponent.Score ? "L" : "";
+								status = $"{game.Status.AbstractGameState}: {liveStatus} {game.Participants.Away.Score} - {game.Participants.Home.Score}";
+								if (_currentGame == game.GamePk && statusCode != _lastStatusCode)
+									PuckDropped?.Invoke();
 								pollTime = TimeSpan.FromSeconds(3);
 								break;
-							case 4: // Live "In Progress - Critical" | over time??
-								var criticalStanding = myTeam.Score > opponent.Score ? "W" : myTeam.Score < opponent.Score ? "L" : "";
-								status = $"Overtime: {criticalStanding} {game.Participants.Away.Score} - {game.Participants.Home.Score}";
-								pollTime = TimeSpan.FromSeconds(1);
+							case 4: // Live "In Progress - Critical" | last 5 minutes
+								var criticalStatus = myTeam.Score > opponent.Score ? "W" : myTeam.Score < opponent.Score ? "L" : "";
+								status = $"5 To Go: {criticalStatus} {game.Participants.Away.Score} - {game.Participants.Home.Score}";
+								if (_currentGame == game.GamePk && statusCode != _lastStatusCode)
+									CriticalGamePlayStarted?.Invoke();
+								pollTime = TimeSpan.FromSeconds(1.5);
 								break;
 							case 5: // Final "Game Over"
 							case 6: // Final "Final"
 							case 7: // Final "Final"
-								var finalStanding = myTeam.Score > opponent.Score ? "W" : myTeam.Score < opponent.Score ? "L" : "";
-								status = $"{game.Status.DetailedState}: {finalStanding} {game.Participants.Away.Score} - {game.Participants.Home.Score}";
-								pollTime = TimeSpan.FromMinutes(10);
+								var finalStatus = myTeam.Score > opponent.Score ? "W" : myTeam.Score < opponent.Score ? "L" : "";
+								status = $"{game.Status.DetailedState}: {finalStatus} {game.Participants.Away.Score} - {game.Participants.Home.Score}";
+								if (_currentGame == game.GamePk && statusCode != _lastStatusCode)
+									GameEnded?.Invoke();
+								pollTime = TimeSpan.FromMinutes(1); // ToDo fix this after eval
 								break;
 							case 9: // Preview "Postponed"
 								status = $"{game.Status.DetailedState}";
-								pollTime = TimeSpan.FromMinutes(10);
+								pollTime = TimeSpan.FromMinutes(15);
 								break;
 							default: throw new InvalidEnumArgumentException($"invalid {nameof(game.Status.DetailedState)}");
 						}
 
 						ChangeProperty(TileStatus, status);
 						_extension.PrintLine($"{game.Status.AbstractGameState}");
-
-						/*// Game Start Event
-						if (_currentGame != game.GamePk)
-						{
-							_gameStarted = false;
-						}
-
-						if (!_gameStarted && DateTime.Now >= game.GameDate)
-						{
-							_gameStarted = true;
-							GameStarted?.Invoke();
-						}*/
+						_lastStatusCode = statusCode;
 
 						// Goal Events
 						if (statusCode == 3 || statusCode == 4) // Live; can get hard data, class: GameStatus #3 AbstractGameState and avoid breakage
 						{
 							// first make sure in sync, system may have just boot or api offline || Team change (H<>A team swap)
-							if (_currentGame != game.GamePk || myTeam != _myLastTeam)
+							if (_currentGame != game.GamePk || myTeam.Team.Id != _myLastTeam.Team.Id)
 							{
 								_extension.PrintLine("game update");
 								_myLastTeam = myTeam;
@@ -255,10 +253,7 @@ namespace NhlApiShared.Common
 			}
 
 			return pollTime;
-			#endregion app
 		}
-
-		private T GetProperty<T>(string key) => ((PropertyValue<T>)Properties[key]).Value;
 
 		private void AddTeams(IEnumerable<Team> teams)
 		{

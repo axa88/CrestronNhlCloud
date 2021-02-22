@@ -1,4 +1,6 @@
-﻿using static System.Console;
+﻿using System;
+
+using static System.Console;
 
 
 namespace TestConsole
@@ -7,12 +9,19 @@ namespace TestConsole
 	{
 		static void Main(string[] args)
 		{
-			var nhlExtension = new NhlExtension();
-			nhlExtension.Initialize();
-			nhlExtension.TeamGoalScored += () => WriteLine("+++ GOAL");
-			nhlExtension.StatusChanged += status => WriteLine($"+++ status: {status}");
+			var nhlExt = new NhlExtension();
+			nhlExt.Initialize();
+			nhlExt.PreGameStarted += () => WriteLine($"++++++ {DateTime.Now} PREGAME");
+			nhlExt.PuckDropped += () => WriteLine($"++++++ {DateTime.Now} PUCK DROP");
+			nhlExt.CriticalGamePlayStarted += () => WriteLine($"++++++ {DateTime.Now} Critical Play");
+			nhlExt.TeamGoalScored += () => WriteLine($"++++++ {DateTime.Now} GOAL");
+			nhlExt.OpponentGoalScored += () => WriteLine($"++++++ {DateTime.Now} OPP");
+			nhlExt.GameEnded += () => WriteLine($"++++++ {DateTime.Now} END");
 
-			ReadLine();
+			nhlExt.StatusChanged += status => WriteLine($"+++ status: {status}");
+
+			while (true)
+				nhlExt.ConsoleReader(ReadLine());
 		}
 	}
 }

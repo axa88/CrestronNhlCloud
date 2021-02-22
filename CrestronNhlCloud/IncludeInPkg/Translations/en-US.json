@@ -1,17 +1,14 @@
 {
-	"MainPageTitle": "NHL Goal Notifier",
+	"MainPageTitle": "NHL Update",
 	"MainPageSubTitle": "Settings",
 
-	"SubheaderLabelTeamSelector": "Select Your Team:",
 	"SelectorButtonLabelTeam": "Your Team:",
-
-	"SubheaderGoalActionSelectorLabel": "Select Your Goal Action:",
-	"SelectorButtonLabelAction": "Your Action:",
+	"SubheaderLabelTeamSelector": "Select Your Team:",
 
 	"PreGameStarted": "Pre-Game Started",
 	"GameStarted": "Game Started",
 	"PuckDropped": "Puck Dropped",
-	"OverTimeStarted": "Overtime Started",
+	"CriticalGamePlayStarted": "Critical GamePlay Started",
 	"GameEnded": "Game Ended",
 	"TeamGoalScored": "Goal Scored",
 	"OpponentGoalScored": "Opponent Scored",
