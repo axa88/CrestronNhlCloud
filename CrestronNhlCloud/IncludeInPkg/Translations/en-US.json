@@ -2,8 +2,12 @@
 	"MainPageTitle": "NHL Update",
 	"MainPageSubTitle": "Settings",
 
-	"SelectorButtonLabelTeam": "Your Team:",
 	"SubheaderLabelTeamSelector": "Select Your Team:",
+	"SelectorButtonLabelTeam": "Your Team:",
+
+	"SubheaderLabelGoalNotificationDelay": "Goal Notification Delay",
+	"XToggleSliderLabelGoalDelay": "",
+	"ToggleSliderLabel2GoalDelay": "Seconds",
 
 	"PreGameStarted": "Pre-Game Started",
 	"GameStarted": "Game Started",

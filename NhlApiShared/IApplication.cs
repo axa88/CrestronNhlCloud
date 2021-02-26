@@ -11,5 +11,11 @@ namespace NhlApiShared
 		event Action GameEnded;
 		event Action TeamGoalScored;
 		event Action OpponentGoalScored;
+		void OnPreGameStarted();
+		void OnOnPuckDropped();
+		void OnCriticalGamePlayStarted();
+		void OnGameEnded();
+		void OnTeamGoalScored();
+		void OnOpponentGoalScored();
 	}
 }

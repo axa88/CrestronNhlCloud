@@ -270,7 +270,7 @@ namespace Crestron.RAD.Common.BasicDriver
 
 				_connected = value;
 				if (EnableLogging)
-					Log(string.Format("Connected changed - new state: {0}", _connected));
+					Log($"Connected changed - new state: {_connected}");
 
 				if (ConnectedChanged == null)
 				{
@@ -280,7 +280,8 @@ namespace Crestron.RAD.Common.BasicDriver
 				}
 
 				if (EnableLogging)
-					Log(string.Format("Raising ConnectedChanged event"));
+					Log("Raising ConnectedChanged event");
+				
 				ConnectedChanged.Invoke(this, new ValueEventArgs<bool>(_connected));
 			}
 		}

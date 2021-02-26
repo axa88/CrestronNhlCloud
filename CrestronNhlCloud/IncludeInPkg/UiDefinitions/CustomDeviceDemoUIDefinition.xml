@@ -7,7 +7,9 @@
     <layout id="LayoutSetup" title="^MainPageTitle" subtitle="^MainPageSubTitle">
       <controls>
         <subheader id="SubheaderIdTeamSelector" label="^SubheaderLabelTeamSelector" />
-        <selectorbutton id="SelectorButtonIdTeam" label="^SelectorButtonLabelTeam" value="{SelectorButtonValueTeam}" />
+        <selectorbutton id="SelectorButtonIdTeam" label="^SelectorButtonLabelTeam" value="{SelectorButtonValueTeamKey}" />
+        <subheader id="SubheaderIdGoalNotificationDelay" label="^SubheaderLabelGoalNotificationDelay" />
+        <toggleslider id="ToggleSliderIdGoalDelay" label="{ToggleSliderLabelGoalDelayKey}" secondarylabel="^ToggleSliderLabel2GoalDelay" togglevalue="{ToggleSliderToggleGoalDelayKey}" slidervalue="{ToggleSliderValueGoalDelayKey}" />
       </controls>
     </layout>
   </layouts>

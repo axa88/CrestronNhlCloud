@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 
 using Crestron.RAD.Common.Attributes.Programming;
 using Crestron.RAD.Common.Enums;
@@ -12,16 +11,12 @@ using NhlApiShared;
 using NhlApiShared.Common;
 
 using TestConsole.Portability;
-using TestConsole.Transport;
-
-using static NhlApiShared.Common.UiObjects;
 
 
 namespace TestConsole
 {
 	public class NhlExtension :  AExtensionDevice, ICloudConnected, IApplication, IPlatform, ISettings
 	{
-		public HttpTransport HttpTransport;
 		private Logic _logic;
 
 		public NhlExtension()
@@ -33,7 +28,7 @@ namespace TestConsole
 			}
 			catch (Exception e)
 			{
-				CatchPrint(e);
+				PrintLine("Bad Constructor");
 				throw new Exception("Bad Constructor");
 			}
 
@@ -50,7 +45,6 @@ namespace TestConsole
 		{
 			PrintLine("Ext Dispose");
 
-			HttpTransport?.Dispose();
 			_logic?.Dispose();
 			base.Dispose();
 		}
@@ -63,19 +57,10 @@ namespace TestConsole
 
 			try
 			{
-				HttpTransport = new HttpTransport();
-
 				_logic = new Logic(this);
-				_logic.PreGameStarted += () => PreGameStarted?.Invoke();
-				_logic.PuckDropped += () => PuckDropped?.Invoke();
-				_logic.CriticalGamePlayStarted += () => CriticalGamePlayStarted?.Invoke();
-				_logic.GameEnded += () => GameEnded?.Invoke();
-				_logic.TeamGoalScored += () => TeamGoalScored?.Invoke();
-				_logic.OpponentGoalScored += () => OpponentGoalScored?.Invoke();
-
 				_logic.Initialize();
 			}
-			catch (Exception e) { CatchPrint(e); }
+			catch (Exception e) { _logic.CatchPrint(e); }
 
 			PrintLine("RAD EX: ini end");
 		}
@@ -99,47 +84,24 @@ namespace TestConsole
 
 		[ProgrammableEvent ("^OpponentGoalScored")]
 		public event Action OpponentGoalScored;
+
+		public void OnPreGameStarted() => PreGameStarted?.Invoke();
+		public void OnOnPuckDropped() => PuckDropped?.Invoke();
+		public void OnCriticalGamePlayStarted() => CriticalGamePlayStarted?.Invoke();
+		public void OnGameEnded() { GameEnded?.Invoke(); }
+		public void OnTeamGoalScored() => TeamGoalScored?.Invoke();
+		public void OnOpponentGoalScored() => OpponentGoalScored?.Invoke();
 		#endregion
 
 		#region Implementation of IPlatform
 		public void UpdateUi() => Commit();
 		public void Connect(bool state) => Connected = state;
 		public void PrintLine(string message) => Log(message);
-
-		public void ConsoleReader(string args)
-		{
-			var input = args.Split(' ').Select(s => s.Trim()).ToList();;
-			if (input.Count < 2)
-				return;
-
-			switch (input[0])
-			{
-				case string log when log.Equals("log", StringComparison.OrdinalIgnoreCase):
-				{
-					switch (input[1])
-					{
-						case string on when on.Equals("on", StringComparison.OrdinalIgnoreCase):
-							EnableLogging = true;
-							break;
-						case string off when off.Equals("off", StringComparison.OrdinalIgnoreCase):
-							EnableLogging = true;
-							break;
-					}
-					break;
-				}
-
-				case string team when team.Equals("team", StringComparison.OrdinalIgnoreCase):
-				{
-					var availableValue = (PropertyAvailableValue<ushort>)_logic.TeamList.FirstOrDefault(propertyAvailableValue => propertyAvailableValue.LabelLocalizationKey == input[1]);
-					if (availableValue != default)
-						SetDriverPropertyValue(SelectorButtonValueTeam, availableValue.Value);
-					break;
-				}
-			}
-		}
-
 		public PropertyValue<T> CreateProperty<T>(string key, DevicePropertyType type, IEnumerable<IPropertyAvailableValue> availableValues = null)
 			=> CreateProperty<T>(availableValues == null ? new PropertyDefinition(key, key, type) : new PropertyDefinition(key, key, type, availableValues));
+		public PropertyValue<T> CreateProperty<T>(string key, DevicePropertyType type, ushort min, ushort max, ushort step)
+			=>  CreateProperty<T>(new PropertyDefinition(key, key, type, min, max, step));
+		public void ConsoleReader(string args) => _logic.ConsoleReader(args);
 		#endregion
 
 		#region Implementation of ISettings
@@ -153,77 +115,9 @@ namespace TestConsole
 		#endregion
 
 		#region Overrides of AExtensionDevice
-		protected override IOperationResult DoCommand(string command, string[] parameters)
-		{
-			PrintLine(nameof(DoCommand));
-			PrintLine($"command: {command}");
-			foreach (var parameter in parameters)
-				PrintLine($"parameters: {parameter}");
-
-			switch (command)
-			{
-				case TileActionRoom:
-					try { PrintLine($"{nameof(TileActionRoom)}"); }
-					catch (Exception e) { CatchPrint(e); }
-					break;
-
-				default:
-					PrintLine("NHL: Unhandled command: " + command);
-					break;
-			}
-
-			return new OperationResult(OperationResultCode.Success);
-		}
-
-		protected override IOperationResult SetDriverPropertyValue<T>(string propertyKey, T value)
-		{
-			PrintLine(nameof(SetDriverPropertyValue));
-			PrintLine($"propertyKey: {propertyKey}{Environment.NewLine}value: {value}");
-
-			try
-			{
-				switch (propertyKey)
-				{
-					case SelectorButtonValueTeam:
-						// if team changes
-						var old = ((PropertyValue<ushort>)_logic.Properties[propertyKey]).Value;
-
-						// set button value to selected value
-						_logic.ChangeProperty(propertyKey, value);
-
-						// store current team
-						SetNumberSetting(nameof(DefaultTeamKey), ((PropertyValue<ushort>)_logic.Properties[propertyKey]).Value);
-
-						// if team changed update
-						if (Convert.ToUInt16(value) != old)
-						{
-							PrintLine("team changed");
-							_logic.PollTimerCallback(null);
-						}
-
-						break;
-				}
-
-				return new OperationResult(OperationResultCode.Success);
-			}
-			catch (Exception exception)
-			{
-				CatchPrint(exception);
-				return new OperationResult(OperationResultCode.Error);
-			}
-		}
-
-		protected override IOperationResult SetDriverPropertyValue<T>(string objectId, string propertyKey, T value)
-		{
-			PrintLine($"{nameof(SetDriverPropertyValue)} obj overload. id: {objectId}, prop key: {propertyKey} val: {value}");
-			return new OperationResult(OperationResultCode.Success);
-		}
+		protected override IOperationResult DoCommand(string command, string[] parameters) => _logic.DoCommand(command, parameters);
+		protected override IOperationResult SetDriverPropertyValue<T>(string propertyKey, T value) => _logic.SetDriverPropertyValue(propertyKey, value);
+		protected override IOperationResult SetDriverPropertyValue<T>(string objectId, string propertyKey, T value) => _logic.SetDriverPropertyValue(objectId, propertyKey, value);
 		#endregion
-
-		public void CatchPrint(Exception exception)
-		{
-			PrintLine(exception.Message);
-			PrintLine(exception.StackTrace);
-		}
 	}
 }

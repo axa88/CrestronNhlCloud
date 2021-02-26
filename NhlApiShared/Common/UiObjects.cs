@@ -2,14 +2,16 @@
 {
 	public static class UiObjects
 	{
-		public const string DefaultTeamKey = nameof(DefaultTeamKey);
-		public const string DefaultSportKey = nameof(DefaultSportKey);
-
+		//public const string DefaultTeamKey = nameof(DefaultTeamKey);
 		public const string TileStatus = nameof(TileStatus);
 		public const string TileIcon = nameof(TileIcon);
 		public const string TileSecondaryIcon = nameof(TileSecondaryIcon);
 		public const string TileActionRoom = nameof(TileActionRoom);
 
-		public const string SelectorButtonValueTeam = nameof(SelectorButtonValueTeam);
+		public const string SelectorButtonValueTeamKey = nameof(SelectorButtonValueTeamKey);
+
+		public const string ToggleSliderLabelGoalDelayKey = nameof(ToggleSliderLabelGoalDelayKey);
+		public const string ToggleSliderToggleGoalDelayKey = nameof(ToggleSliderToggleGoalDelayKey);
+		public const string ToggleSliderValueGoalDelayKey = nameof(ToggleSliderValueGoalDelayKey);
 	}
 }
