@@ -29,8 +29,8 @@ namespace CrestronNhlCloud
 			}
 			catch (Exception e)
 			{
-				PrintLine("Bad Constructor");
-				throw new Exception("Bad Constructor");
+				PrintLine(e.Message);
+				throw new Exception(e.StackTrace);
 			}
 
 			PrintLine("RAD EX: cstr end");
