@@ -134,17 +134,17 @@
     <Reference Include="System.Core" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="TheExtension.cs" />
     <Compile Include="Transport\HttpTransport.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="NhlExtension.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\.editorconfig">
       <Link>.editorconfig</Link>
     </None>
     <None Include="IncludeInPkg\Translations\en-US.json" />
+    <EmbeddedResource Include="TheExtension.json" />
     <None Include="packages.config" />
-    <EmbeddedResource Include="NhlExtension.json" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="IncludeInPkg\UiDefinitions\CustomDeviceDemoUIDefinition.xml" />

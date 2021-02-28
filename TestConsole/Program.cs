@@ -9,7 +9,7 @@ namespace TestConsole
 	{
 		static void Main(string[] args)
 		{
-			var nhlExt = new NhlExtension();
+			var nhlExt = new TheExtension();
 			nhlExt.Initialize();
 			nhlExt.PreGameStarted += () => WriteLine($"++++++ {DateTime.Now} PREGAME");
 			nhlExt.PuckDropped += () => WriteLine($"++++++ {DateTime.Now} PUCK DROP");
