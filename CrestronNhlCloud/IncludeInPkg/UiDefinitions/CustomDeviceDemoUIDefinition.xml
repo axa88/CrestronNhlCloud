@@ -8,8 +8,8 @@
       <controls>
         <subheader id="SubheaderIdTeamSelector" label="^SubheaderLabelTeamSelector" />
         <selectorbutton id="SelectorButtonIdTeam" label="^SelectorButtonLabelTeam" value="{SelectorButtonValueTeamKey}" />
-        <subheader id="SubheaderIdGoalNotificationDelay" label="^SubheaderLabelGoalNotificationDelay" />
-        <toggleslider id="ToggleSliderIdGoalDelay" label="{ToggleSliderLabelGoalDelayKey}" secondarylabel="^ToggleSliderLabel2GoalDelay" togglevalue="{ToggleSliderToggleGoalDelayKey}" slidervalue="{ToggleSliderValueGoalDelayKey}" />
+        <subheader id="SubheaderIdNotificationDelay" label="^SubheaderLabelNotificationDelay" />
+        <toggleslider id="ToggleSliderIdNotificationDelay" label="{ToggleSliderLabelNotificationDelayKey}" secondarylabel="^ToggleSliderLabel2NotificationDelay" togglevalue="{ToggleSliderToggleNotificationDelayKey}" slidervalue="{ToggleSliderValueNotificationDelayKey}" />
       </controls>
     </layout>
   </layouts>

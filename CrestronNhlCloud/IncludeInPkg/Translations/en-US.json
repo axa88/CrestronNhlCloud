@@ -5,9 +5,9 @@
 	"SubheaderLabelTeamSelector": "Select Your Team:",
 	"SelectorButtonLabelTeam": "Your Team:",
 
-	"SubheaderLabelGoalNotificationDelay": "Goal Notification Delay",
-	"XToggleSliderLabelGoalDelay": "",
-	"ToggleSliderLabel2GoalDelay": "Seconds",
+	"SubheaderLabelNotificationDelay": "Notification Delay",
+	"XToggleSliderLabelNotificationDelay": "",
+	"ToggleSliderLabel2NotificationDelay": "Seconds",
 
 	"PreGameStarted": "Pre-Game Started",
 	"GameStarted": "Game Started",

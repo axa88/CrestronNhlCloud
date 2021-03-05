@@ -9,8 +9,8 @@
 
 		public const string SelectorButtonValueTeamKey = nameof(SelectorButtonValueTeamKey);
 
-		public const string ToggleSliderLabelGoalDelayKey = nameof(ToggleSliderLabelGoalDelayKey);
-		public const string ToggleSliderToggleGoalDelayKey = nameof(ToggleSliderToggleGoalDelayKey);
-		public const string ToggleSliderValueGoalDelayKey = nameof(ToggleSliderValueGoalDelayKey);
+		public const string ToggleSliderLabelNotificationDelayKey = nameof(ToggleSliderLabelNotificationDelayKey);
+		public const string ToggleSliderToggleNotificationDelayKey = nameof(ToggleSliderToggleNotificationDelayKey);
+		public const string ToggleSliderValueNotificationDelayKey = nameof(ToggleSliderValueNotificationDelayKey);
 	}
 }

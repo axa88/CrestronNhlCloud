@@ -47,6 +47,8 @@ public class Extension : AExtensionDevice, ICloudConnected
 	private readonly TimeSpan _pregameOffset = FromMinutes(30);
 	private Timer _goalDelayTimer;
 	private Timer _opponentDelayTimer;
+	private Timer _criticalPlayDelayTimer;
+	private Timer _gameEndedDelayTimer;
 
 	[SuppressMessage("CodeQuality", "IDE0079:Remove unnecessary suppression", Justification = "<Pending>")]
 	[SuppressMessage("ReSharper", "MemberCanBeProtected.Global")]
@@ -54,7 +56,10 @@ public class Extension : AExtensionDevice, ICloudConnected
 	{
 		try
 		{
+			#if (DEBUG)
 			EnableLogging = true;
+			#endif
+
 			Log("Logic ctor start");
 			Log("Logic ctor end");
 		}
@@ -88,9 +93,14 @@ public class Extension : AExtensionDevice, ICloudConnected
 		_pollTimer?.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
 		_goalDelayTimer?.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
 		_opponentDelayTimer?.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+		_criticalPlayDelayTimer?.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+		_gameEndedDelayTimer?.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
 		_pollTimer?.Dispose();
 		_goalDelayTimer?.Dispose();
 		_opponentDelayTimer?.Dispose();
+		_criticalPlayDelayTimer?.Dispose();
+		_gameEndedDelayTimer?.Dispose();
+
 		_httpTransport?.Dispose();
 		base.Dispose();
 	}
@@ -112,16 +122,17 @@ public class Extension : AExtensionDevice, ICloudConnected
 
 			// Goal Delay
 			// Label
-			_properties[ToggleSliderLabelGoalDelayKey] = CreateProperty<string>(ToggleSliderLabelGoalDelayKey, DevicePropertyType.String);
+			_properties[ToggleSliderLabelNotificationDelayKey] = CreateProperty<string>(ToggleSliderLabelNotificationDelayKey, DevicePropertyType.String);
 			// Slider
-			_properties[ToggleSliderValueGoalDelayKey] = CreateProperty<ushort>(ToggleSliderValueGoalDelayKey, DevicePropertyType.UInt16, 0, 60, 1);
+			_properties[ToggleSliderValueNotificationDelayKey] = CreateProperty<ushort>(ToggleSliderValueNotificationDelayKey, DevicePropertyType.UInt16, 0, 60, 1);
 
 			// initial values
 			SetProperty(TileStatus, "-");
 			SetProperty(TileIcon, "icBroadcastRegular");
 			//ChangeProperty(TileSecondaryIcon, "icSettings");
-			SetProperty(ToggleSliderValueGoalDelayKey, GetNumberSetting(ToggleSliderValueGoalDelayKey));
-			SetProperty(ToggleSliderLabelGoalDelayKey, GetProperty<ushort>(ToggleSliderValueGoalDelayKey).ToString());
+			var teamId = GetNumberSetting(ToggleSliderValueNotificationDelayKey);
+			SetProperty(ToggleSliderValueNotificationDelayKey, teamId);
+			SetProperty(ToggleSliderLabelNotificationDelayKey, teamId.ToString());
 
 			// assign event handlers
 			PreGameStarted += PreGameStarted;
@@ -135,6 +146,8 @@ public class Extension : AExtensionDevice, ICloudConnected
 
 			_goalDelayTimer = new Timer(state => { TeamGoalScored?.Invoke(); }, null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
 			_opponentDelayTimer = new Timer(state => { OpponentGoalScored?.Invoke(); }, null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+			_criticalPlayDelayTimer = new Timer(state => { CriticalGamePlayStarted?.Invoke(); }, null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+			_gameEndedDelayTimer = new Timer(state => { GameEnded?.Invoke(); }, null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
 			_pollTimer = new Timer(PollTimerCallback, null, FromMinutes(0), Timeout.InfiniteTimeSpan);
 
 			Log("ini ini end");
@@ -190,9 +203,9 @@ public class Extension : AExtensionDevice, ICloudConnected
 
 					break;
 
-				case ToggleSliderValueGoalDelayKey:
+				case ToggleSliderValueNotificationDelayKey:
 					SetProperty(propertyKey, value);
-					SetProperty(ToggleSliderLabelGoalDelayKey, value.ToString());
+					SetProperty(ToggleSliderLabelNotificationDelayKey, value.ToString());
 					SetNumberSetting(propertyKey, GetProperty<ushort>(propertyKey));
 					break;
 			}
@@ -295,19 +308,21 @@ public class Extension : AExtensionDevice, ICloudConnected
 							_opponentScore = opponent.Score;
 							_goalDelayTimer.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
 							_opponentDelayTimer.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+							_criticalPlayDelayTimer.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+							_gameEndedDelayTimer.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
 						}
 
 						// check
 						if (_myTeamScore != myTeam.Score)
 						{
 							_myTeamScore = myTeam.Score;
-							_goalDelayTimer.Change(FromSeconds(GetProperty<ushort>(ToggleSliderValueGoalDelayKey)), Timeout.InfiniteTimeSpan);
+							_goalDelayTimer.Change(FromSeconds(GetProperty<ushort>(ToggleSliderValueNotificationDelayKey)), Timeout.InfiniteTimeSpan);
 						}
 
 						if (_opponentScore != opponent.Score)
 						{
 							_opponentScore = opponent.Score;
-							_opponentDelayTimer.Change(FromSeconds(GetProperty<ushort>(ToggleSliderValueGoalDelayKey)), Timeout.InfiniteTimeSpan);
+							_opponentDelayTimer.Change(FromSeconds(GetProperty<ushort>(ToggleSliderValueNotificationDelayKey)), Timeout.InfiniteTimeSpan);
 						}
 					}
 				}
@@ -376,7 +391,7 @@ public class Extension : AExtensionDevice, ICloudConnected
 				var criticalStatus = myTeam.Score > opponent.Score ? "W" : myTeam.Score < opponent.Score ? "L" : "";
 				status = $"5 To Go: {criticalStatus} {game.Participants.Away.Score} - {game.Participants.Home.Score}";
 				if (_currentGame == game.GamePk && statusCode != _lastStatusCode)
-					CriticalGamePlayStarted?.Invoke();
+					_criticalPlayDelayTimer.Change(FromSeconds(GetProperty<ushort>(ToggleSliderValueNotificationDelayKey)), Timeout.InfiniteTimeSpan);
 
 				pollTime = FromSeconds(1.5);
 				break;
@@ -386,7 +401,7 @@ public class Extension : AExtensionDevice, ICloudConnected
 				var finalStatus = myTeam.Score > opponent.Score ? "W" : myTeam.Score < opponent.Score ? "L" : "";
 				status = $"{game.Status.DetailedState}: {finalStatus} {game.Participants.Away.Score} - {game.Participants.Home.Score}";
 				if (_currentGame == game.GamePk && statusCode != _lastStatusCode)
-					GameEnded?.Invoke();
+					_gameEndedDelayTimer.Change(FromSeconds(GetProperty<ushort>(ToggleSliderValueNotificationDelayKey)), Timeout.InfiniteTimeSpan);
 
 				pollTime = FromMinutes(1); // ToDo fix this after eval
 				break;
